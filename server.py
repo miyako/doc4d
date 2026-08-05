@@ -1,5 +1,6 @@
 import sqlite3
 import struct
+import time
 import llama_cpp
 from llama_cpp import Llama
 from typing import Optional
@@ -13,6 +14,7 @@ MODEL_PATH = "models/LFM2.5-Embedding-350M-Q8_0.gguf"
 QUERY_PREFIX = "query: "  # note trailing space, per model card
 POOLING_TYPE = llama_cpp.LLAMA_POOLING_TYPE_CLS
 
+_t0 = time.time()
 llm = Llama(
     model_path=MODEL_PATH,
     embedding=True,
@@ -21,6 +23,7 @@ llm = Llama(
     n_threads=2,       # match your CPU allocation on the Space
     verbose=False,
 )
+print(f"[startup] model loaded in {time.time() - _t0:.2f}s", flush=True)
 
 db = sqlite3.connect(DB_PATH, check_same_thread=False)
 db.enable_load_extension(True)
@@ -48,7 +51,9 @@ def search(
     k = max(1, min(k, 50))              # cap result count regardless of what caller requests
     query = query[:2000]                # cap query length fed into the embedder
 
+    t0 = time.time()
     q_blob = embed_query(query)
+    t1 = time.time()
 
     # pull extra candidates since we'll filter afterward
     candidate_limit = k * 20
@@ -60,11 +65,18 @@ def search(
         ORDER BY distance
         LIMIT ?
     """, (q_blob, candidate_limit)).fetchall()
+    t2 = time.time()
 
     filtered = [
         r for r in rows
         if r[2] == language and r[3] == version
     ][:k]
+
+    print(
+        f"[search] embed={t1 - t0:.2f}s db={t2 - t1:.2f}s "
+        f"total={t2 - t0:.2f}s candidates={len(rows)} returned={len(filtered)}",
+        flush=True,
+    )
 
     return [
         {
