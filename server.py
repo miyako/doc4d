@@ -20,7 +20,10 @@ llm = Llama(
     embedding=True,
     pooling_type=POOLING_TYPE,
     n_ctx=512,
-    n_threads=2,       # match your CPU allocation on the Space
+    n_threads=1,       # testing: llama.cpp's multi-thread sync busy-spins,
+                       # which can be catastrophically slow on throttled/shared
+                       # vCPU containers — try single-threaded before assuming
+                       # more cores/CPU tuning is the answer
     verbose=False,
 )
 print(f"[startup] model loaded in {time.time() - _t0:.2f}s", flush=True)
