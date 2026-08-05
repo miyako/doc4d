@@ -27,6 +27,7 @@ llm = Llama(
                        # vCPU containers — try single-threaded before assuming
                        # more cores/CPU tuning is the answer
     verbose=False,
+    use_mmap=False,
 )
 print(f"[startup] model loaded in {time.time() - _t0:.2f}s", flush=True)
 
