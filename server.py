@@ -7,6 +7,8 @@ from typing import Optional
 from typing import Literal
 from mcp.server import MCPServer
 
+print(llama_cpp.llama_cpp.llama_print_system_info().decode())
+
 DIM = 1024
 DB_PATH = "data/doc.db"
 MODEL_PATH = "models/LFM2.5-Embedding-350M-Q8_0.gguf"
@@ -24,7 +26,7 @@ llm = Llama(
                        # which can be catastrophically slow on throttled/shared
                        # vCPU containers — try single-threaded before assuming
                        # more cores/CPU tuning is the answer
-    verbose=True,
+    verbose=False,
 )
 print(f"[startup] model loaded in {time.time() - _t0:.2f}s", flush=True)
 
