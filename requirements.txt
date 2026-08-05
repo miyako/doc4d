@@ -1,2 +1,4 @@
 mcp[cli]
 sqlite-vec
+onnxruntime
+tokenizers

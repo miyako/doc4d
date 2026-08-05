@@ -1,15 +1,22 @@
 #!/bin/sh
 set -e
 
-MODEL_URL="https://huggingface.co/keisuke-miyako/doc4d-2026-08-05/resolve/main/LFM2.5-Embedding-350M-Q8_0.gguf"
+MODEL_URL="https://huggingface.co/keisuke-miyako/doc4d-2026-08-05/resolve/main/LFM2.5-Embedding-350M/model.onnx"
+TOKENIZER_URL="https://huggingface.co/keisuke-miyako/doc4d-2026-08-05/resolve/main/LFM2.5-Embedding-350M/tokenizer.json"
 DATA_URL="https://huggingface.co/datasets/keisuke-miyako/doc4d-2026-08-05/resolve/main/doc.db"
 
-mkdir -p models data
+mkdir -p models/LFM2.5-Embedding-350M data
 
-if [ ! -f models/LFM2.5-Embedding-350M-Q8_0.gguf ]; then
+if [ ! -f models/LFM2.5-Embedding-350M/model.onnx ]; then
     echo "Downloading model from HF..."
-    curl -L --retry 3 -o models/LFM2.5-Embedding-350M-Q8_0.gguf.tmp "$MODEL_URL"
-    mv models/LFM2.5-Embedding-350M-Q8_0.gguf.tmp models/LFM2.5-Embedding-350M-Q8_0.gguf
+    curl -L --retry 3 -o models/LFM2.5-Embedding-350M/model.onnx.tmp "$MODEL_URL"
+    mv models/LFM2.5-Embedding-350M/model.onnx.tmp models/LFM2.5-Embedding-350M/model.onnx
+fi
+
+if [ ! -f models/LFM2.5-Embedding-350M/tokenizer.json ]; then
+    echo "Downloading tokenizer from HF..."
+    curl -L --retry 3 -o models/LFM2.5-Embedding-350M/tokenizer.json.tmp "$TOKENIZER_URL"
+    mv models/LFM2.5-Embedding-350M/tokenizer.json.tmp models/LFM2.5-Embedding-350M/tokenizer.json
 fi
 
 if [ ! -f data/doc.db ]; then
