@@ -1,6 +1,21 @@
 #!/bin/sh
 set -e
 
+MODEL_URL="https://huggingface.co/keisuke-miyako/doc4d-2026-08-05/resolve/main/LFM2.5-Embedding-350M-Q8_0.gguf"
+DATA_URL="https://huggingface.co/datasets/keisuke-miyako/doc4d-2026-08-05/resolve/main/doc.db"
+
+mkdir -p models data
+
+if [ ! -f models/LFM2.5-Embedding-350M-Q8_0.gguf ]; then
+    echo "Downloading model from HF..."
+    curl -L -o models/LFM2.5-Embedding-350M-Q8_0.gguf "$MODEL_URL"
+fi
+
+if [ ! -f data/doc.db ]; then
+    echo "Downloading doc.db from HF..."
+    curl -L -o data/doc.db "$DATA_URL"
+fi
+
 nginx -t                # fail loudly here if the config is broken
 nginx
 
