@@ -5,9 +5,11 @@ RUN apt-get update && apt-get install -y build-essential cmake git nginx curl ge
 WORKDIR /app
 
 # llama-cpp-python's prebuilt wheel targets a generic/lowest-common-denominator
-# CPU (no AVX2/FMA), which makes embedding inference dramatically slower.
-# Force a from-source build tuned to the actual build machine's CPU instead.
-ENV CMAKE_ARGS="-DGGML_NATIVE=ON"
+# CPU, which can be slow. GGML_NATIVE auto-detection is unreliable on virtualized
+# cloud CPUs (cpuid restrictions can make it think there's no SIMD support at
+# all, producing a much SLOWER scalar-only build). Force explicit, safe flags
+# that virtually all modern server CPUs support instead.
+ENV CMAKE_ARGS="-DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_NATIVE=OFF"
 RUN pip install --no-cache-dir --force-reinstall --no-binary llama-cpp-python llama-cpp-python
 
 COPY requirements.txt .
