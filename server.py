@@ -47,7 +47,7 @@ def search(
     query: str,
     language: Literal["en", "fr", "es", "pt", "ja"] = "en",
     version: Literal["18", "20", "21", "21-R3", "21-R4"] = "21-R4",
-    full_text: bool = False,
+    full_text: bool = True,
     k: int = 10,
 ) -> list[dict]:
     """Search the corpus for passages semantically similar to the query."""
