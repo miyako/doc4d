@@ -8,12 +8,12 @@ mkdir -p models data
 
 if [ ! -f models/LFM2.5-Embedding-350M-Q8_0.gguf ]; then
     echo "Downloading model from HF..."
-    curl -L -o models/LFM2.5-Embedding-350M-Q8_0.gguf "$MODEL_URL"
+    curl -L --retry 3 -o models/LFM2.5-Embedding-350M-Q8_0.gguf "$MODEL_URL"
 fi
 
 if [ ! -f data/doc.db ]; then
     echo "Downloading doc.db from HF..."
-    curl -L -o data/doc.db "$DATA_URL"
+    curl -L --retry 3 -o data/doc.db "$DATA_URL"
 fi
 
 # Railway (and similar PaaS) assign a dynamic port via $PORT.
