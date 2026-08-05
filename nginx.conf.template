@@ -7,7 +7,7 @@ http {
     limit_req_zone $binary_remote_addr zone=embed_limit:10m rate=5r/s;
 
     server {
-        listen 80;
+        listen ${PORT};
 
         location / {
             limit_req zone=embed_limit burst=10 nodelay;

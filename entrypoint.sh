@@ -16,6 +16,11 @@ if [ ! -f data/doc.db ]; then
     curl -L -o data/doc.db "$DATA_URL"
 fi
 
+# Railway (and similar PaaS) assign a dynamic port via $PORT.
+# Fall back to 80 for local/Docker/Oracle runs where PORT isn't set.
+export PORT="${PORT:-80}"
+envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+
 nginx -t                # fail loudly here if the config is broken
 nginx
 

@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-RUN apt-get update && apt-get install -y build-essential cmake git nginx curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y build-essential cmake git nginx curl gettext-base && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -12,11 +12,12 @@ COPY server.py .
 # downloads LFM2.5-Embedding-350M-Q8_0.gguf and doc.db from Hugging Face
 # at container startup instead, keeping this image lightweight.
 
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# 7860 stays internal-only now; 80 is what actually gets published/exposed
+# 7860 stays internal-only. Public port is dynamic: Railway injects $PORT at
+# runtime; entrypoint.sh falls back to 80 when $PORT isn't set (e.g. Oracle/local).
 EXPOSE 80
 
 ENTRYPOINT ["/entrypoint.sh"]
