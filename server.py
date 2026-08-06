@@ -64,7 +64,7 @@ def embed_query(text: str) -> bytes:
     return struct.pack(f"{DIM}f", *vec.tolist())
 
 
-mcp = MCPServer("rag-search")
+mcp = MCPServer("4D Documentation")
 
 
 @mcp.tool()
