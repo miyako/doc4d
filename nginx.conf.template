@@ -30,5 +30,17 @@ http {
             proxy_buffering off;       # required for streamable-http; buffering breaks the stream
             proxy_read_timeout 300s;   # CPU embedding calls can be slow, give it room
         }
+
+        location = /favicon.ico {
+            alias /usr/share/nginx/html/icons/favicon-32x32.png;
+            add_header Access-Control-Allow-Origin * always;
+            add_header Cache-Control "public, max-age=86400" always;
+        }
+
+        location ~ ^/(favicon-32x32\.png|icon-192\.png|apple-touch-icon\.png)$ {
+            root /usr/share/nginx/html/icons;
+            add_header Access-Control-Allow-Origin * always;
+            add_header Cache-Control "public, max-age=86400" always;
+        }
     }
 }
