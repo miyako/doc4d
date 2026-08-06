@@ -16,6 +16,7 @@ COPY server.py .
 # startup instead, keeping this image lightweight.
 
 COPY nginx.conf.template /etc/nginx/nginx.conf.template
+COPY icons/ /usr/share/nginx/html/icons/
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
