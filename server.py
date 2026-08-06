@@ -43,7 +43,7 @@ def embed_query(text: str) -> bytes:
         raise ValueError(f"Model returned {len(vec)}-dim vector, expected {DIM}")
     return struct.pack(f"{DIM}f", *vec)
 
-mcp = MCPServer("rag-search")
+mcp = MCPServer("4D Documentation")
 
 @mcp.tool()
 def search(
