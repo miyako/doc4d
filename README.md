@@ -1,4 +1,4 @@
-# doc4d
+# doc4d (llama.cpp branch)
 
 MCP server for semantic search over the [4D Documentation](https://developer.4d.com/) corpus.
 
@@ -12,11 +12,14 @@ https://doc4d-production.up.railway.app
 
 (streamable-http MCP transport, mounted at `/`)
 
+> **This branch runs the embedding model directly via [`llama-cpp-python`](https://github.com/abetlen/llama-cpp-python) against the original GGUF checkpoint**, rather than an ONNX export. See [`main`](../../tree/main) for the `onnxruntime`-based variant. Functionally the two are equivalent (same model, same pooling, same output vectors) — this branch just skips the ONNX conversion step and its extra dependencies (`onnxruntime`, `tokenizers`).
+
 ## How it works
 
 - **Corpus & vector index:** [`keisuke-miyako/doc4d-2026-08-05`](https://huggingface.co/datasets/keisuke-miyako/doc4d-2026-08-05) on Hugging Face — a SQLite database (`doc.db`) with a [`sqlite-vec`](https://github.com/asg017/sqlite-vec) `vec0` virtual table of 1024-dim embeddings, chunked text, and `url` / `language` / `version` metadata for each chunk of 4D documentation.
-- **Embedding model:** [`LFM2.5-Embedding-350M`](https://huggingface.co/LiquidAI/LFM2.5-Embedding-350M-GGUF), exported to ONNX and run locally via `onnxruntime` + `tokenizers` (no external embedding API call per query).
-- **Server:** `server.py` loads the ONNX model and the SQLite DB at startup, embeds incoming queries with a CLS-pooled, L2-normalized vector (matching the pooling used to build the original embeddings), and runs a cosine-distance nearest-neighbor search via `sqlite-vec`'s `MATCH` operator.
+- **Embedding model:** [`LFM2.5-Embedding-350M-GGUF`](https://huggingface.co/LiquidAI/LFM2.5-Embedding-350M-GGUF), quantized `Q8_0`, loaded directly with `llama-cpp-python`'s `Llama` class in embedding mode — no separate tokenizer file or ONNX export needed, since the GGUF bundles its own tokenizer.
+- **Pooling:** CLS-token pooling (`LLAMA_POOLING_TYPE_CLS`), matching how the dataset's embeddings were originally generated.
+- **Server:** `server.py` loads the GGUF model at startup, embeds incoming queries (prefixed with `"query: "` per the model card), and runs a cosine-distance nearest-neighbor search via `sqlite-vec`'s `MATCH` operator.
 - **Transport:** MCP over `streamable-http`, served internally on port `7860` and reverse-proxied by nginx, which also handles CORS and basic per-IP rate limiting.
 
 ### `search` tool
@@ -38,19 +41,31 @@ Under the hood, `k * 20` nearest-neighbor candidates are pulled from `sqlite-vec
 ```
 .
 ├── Dockerfile
-├── entrypoint.sh          # downloads model + DB from HF, starts nginx, then server.py
+├── entrypoint.sh          # downloads GGUF model + DB from HF, starts nginx, then server.py
 ├── nginx_conf.template    # reverse proxy, CORS, rate limiting
 ├── requirements.txt
-├── server.py              # MCP server + embedding + search logic
+├── server.py              # MCP server + embedding + search logic (llama.cpp backend)
 └── LICENSE
 ```
 
 The Docker image ships **without** the model or database baked in — `entrypoint.sh` downloads them from Hugging Face on container start:
 
-- `models/LFM2.5-Embedding-350M/model.onnx` and `tokenizer.json` from `keisuke-miyako/doc4d-2026-08-05` (model repo)
+- `models/LFM2.5-Embedding-350M-Q8_0.gguf` from [`LiquidAI/LFM2.5-Embedding-350M-GGUF`](https://huggingface.co/LiquidAI/LFM2.5-Embedding-350M-GGUF) (a single self-contained file — no separate tokenizer download needed on this branch)
 - `data/doc.db` from [`datasets/keisuke-miyako/doc4d-2026-08-05`](https://huggingface.co/datasets/keisuke-miyako/doc4d-2026-08-05)
 
 This keeps the image small and lets the corpus/model be updated without rebuilding the image — just clear the mounted volume (or redeploy) to force a re-download.
+
+> **Note:** `entrypoint.sh` and `Dockerfile` on this branch need their model URL/filename updated to point at the `.gguf` checkpoint instead of `model.onnx` + `tokenizer.json` — swap the relevant `curl` step in `entrypoint.sh` accordingly if you're porting the `main`-branch scripts over.
+
+## requirements.txt (this branch)
+
+```
+mcp[cli]
+sqlite-vec
+llama-cpp-python
+```
+
+No `onnxruntime` or `tokenizers` needed — `llama-cpp-python` handles both inference and tokenization internally. Note `llama-cpp-python` typically needs a compiler toolchain (`build-essential`, `cmake`) at install time unless a prebuilt wheel matching your platform is available; keep those in the Dockerfile's `apt-get install` step for this branch even though the ONNX branch doesn't need them.
 
 ## Running locally
 
@@ -78,13 +93,15 @@ pip install -r requirements.txt
 
 This repo is set up to deploy on [Railway](https://railway.com) with zero config beyond the Dockerfile:
 
-1. **New Project → Deploy from GitHub repo**, select `miyako/doc4d`.
-2. Railway detects the `Dockerfile` automatically and builds it — no build command needed.
+1. **New Project → Deploy from GitHub repo**, select `miyako/doc4d`, branch pointing at this llama.cpp variant.
+2. Railway detects the `Dockerfile` automatically and builds it — no build command needed. Note this branch's build step compiles/installs `llama-cpp-python`, so first builds may take noticeably longer than the ONNX branch.
 3. Railway injects `$PORT` at runtime; `entrypoint.sh` picks it up automatically and templates it into the nginx config (`envsubst '${PORT}'`), so **no manual port configuration is required**.
-4. First boot will take longer than subsequent restarts, since `entrypoint.sh` downloads `model.onnx`, `tokenizer.json`, and `doc.db` from Hugging Face before starting the server. If you want faster cold starts, attach a [Railway volume](https://docs.railway.com/reference/volumes) mounted at `/app/models` and `/app/data` so those files persist across deploys/restarts instead of being re-downloaded every time.
+4. First boot will take longer than subsequent restarts, since `entrypoint.sh` downloads the GGUF model and `doc.db` from Hugging Face before starting the server. If you want faster cold starts, attach a [Railway volume](https://docs.railway.com/reference/volumes) mounted at `/app/models` and `/app/data` so those files persist across deploys/restarts instead of being re-downloaded every time.
 5. Once deployed, Railway gives you a public URL (e.g. `https://<your-app>.up.railway.app`) — that's your MCP `streamable-http` endpoint.
 
-No environment variables are required for a default deploy. `PORT` is set by Railway automatically; `OMP_NUM_THREADS=1` is set internally by `entrypoint.sh` to keep ONNX Runtime CPU usage predictable on shared/small instances.
+No environment variables are required for a default deploy — `PORT` is set by Railway automatically.
+
+**CPU note for this branch:** `server.py` sets `n_threads=1` on the `Llama` instance. This was found empirically to avoid pathologically slow inference on throttled/shared-vCPU Railway instances, where llama.cpp's multi-threaded sync busy-spins and fights with the CPU scheduler. If you deploy on a host with dedicated cores, it's worth benchmarking `n_threads` > 1 — it may be faster there, but don't assume it without testing on the actual target host first.
 
 ### Deploying elsewhere (Oracle Cloud, bare Docker host, etc.)
 
@@ -92,7 +109,8 @@ The same image works anywhere that can run a container and reach Hugging Face ov
 
 - If `$PORT` isn't set, `entrypoint.sh` falls back to port `80`.
 - Make sure outbound HTTPS to `huggingface.co` is allowed on first boot (for the model/DB download).
-- Persist `models/` and `data/` on a volume if you want to avoid re-downloading ~350M-model-sized assets on every restart.
+- Persist `models/` and `data/` on a volume if you want to avoid re-downloading the GGUF checkpoint on every restart.
+- If building on a platform without a prebuilt `llama-cpp-python` wheel, expect the `pip install` step to compile from source — keep `build-essential`/`cmake` available at build time.
 
 ## Connecting an MCP client
 
@@ -106,7 +124,8 @@ Rate limiting (5 req/s per IP, burst 10) and CORS (`Access-Control-Allow-Origin:
 
 ## Notes / caveats
 
-- The embedding pooling and normalization in `server.py` assume a standard BERT-style ONNX export (CLS-token pooling, L2-normalized output) matching the original `llama.cpp`-based embedding generation used to build the dataset. If you swap in a different ONNX export of the model, double check `embed_query()` still matches.
+- `use_mmap=False` is set on the `Llama` instance — deliberate, not a leftover default; keep it unless you've verified mmap works reliably on your target host's filesystem/container setup.
+- `n_ctx=512` caps the context window fed to the embedding model; combined with the 2000-character query truncation in `search()`, very long queries will be truncated by the tokenizer rather than raising an error.
 - Query results are only as fresh as the `doc4d-2026-08-05` dataset snapshot — see the [dataset card](https://huggingface.co/datasets/keisuke-miyako/doc4d-2026-08-05) for details on how it was built and its limitations.
 - The `language`/`version` filter happens **after** vector search on an over-fetched candidate set (`k * 20`), not natively in the index — if you query for a rare `language`/`version` combination, you may get fewer than `k` results even when more exist in the corpus.
 
