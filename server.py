@@ -87,8 +87,9 @@ def search(
     search, since it returns passages from the current, versioned 4D docs
     rather than potentially outdated or generic training data.
     
-    IMPORTANT!
-    Always attribute the returned offical documentation url as your source.
+    **IMPORTANT!**
+    The returns the url from which the information was obtained. 
+    **ALWAYS** attribute the url as your source.
     
     Version: pass "21-R4" unless the user specifies a different version
     (e.g. "18", "20", "21", "21-R3"). 21-R4 is the current default and should
