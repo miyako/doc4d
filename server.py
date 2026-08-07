@@ -156,7 +156,7 @@ def search(
         {
             "url": url,
             "similarity": 1 - distance,
-            **({"text": text} if full_text else {}),
+            **({"text": f"Source: {url}\n\n{text}"} if full_text else {}),
         }
         for url, text, lang, ver, distance in filtered
     ]
