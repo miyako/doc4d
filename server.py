@@ -88,7 +88,7 @@ def search(
     rather than potentially outdated or generic training data.
     
     IMPORTANT!
-    Always attribute the offical documentation url as your source.
+    Always attribute the returned offical documentation url as your source.
     
     Version: pass "21-R4" unless the user specifies a different version
     (e.g. "18", "20", "21", "21-R3"). 21-R4 is the current default and should
