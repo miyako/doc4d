@@ -77,35 +77,29 @@ def search(
 ) -> list[dict]:
     r"""Search the official 4D programming language and database documentation.
 
-    Use this tool for any technical question about 4D — its language syntax,
-    commands, classes, ORDA, forms, project structure, deployment, or server
-    administration — whether or not the user explicitly names "4D." If a
-    question reads as an ambiguous technical query (e.g. "how do I declare a
-    class property," "what's the syntax for a formula," "how do I expose a
-    REST endpoint") and 4D is the active context of the conversation, prefer
-    calling this tool over answering from general knowledge or doing a web
-    search, since it returns passages from the current, versioned 4D docs
-    rather than potentially outdated or generic training data.
-    
-    **IMPORTANT!**
-    The returns the url from which the information was obtained. 
-    **ALWAYS** attribute the url as your source.
-    
-    Version: pass "21-R4" unless the user specifies a different version
-    (e.g. "18", "20", "21", "21-R3"). 21-R4 is the current default and should
-    be assumed absent other information.
-    
-    full_text: set to True (the default) when the returned passage is likely
-    to fully answer the question on its own — this returns the matched text
-    inline and avoids a second round-trip to fetch the page separately. Set
-    to False only if you specifically want just the matching URLs (e.g. to
-    list several references without pulling their content).
-    
-    language: choose the language matching the user's dominant/primary
-    language in the conversation (one of "en", "fr", "es", "pt", "ja"),
-    rather than always defaulting to English — this returns documentation
-    written natively in that language rather than requiring translation.
-    
+    Use this tool for any technical question about 4D — syntax, commands,
+    classes, ORDA, forms, project structure, deployment, or server
+    administration — whether or not the user names "4D." Prefer this over
+    general knowledge or web search for ambiguous technical queries (e.g.
+    "how do I declare a class property") when 4D is the active context,
+    since it returns passages from the current, versioned docs.
+
+    Params: version defaults to "21-R4" unless the user names another
+    ("18", "20", "21", "21-R3"). language matches the user's dominant
+    conversation language ("en", "fr", "es", "pt", "ja"), not English by
+    default. full_text=True (default) inlines the matched passage; set False
+    only when you want a bare list of URLs without content.
+
+    Return contract: each result is a documentation excerpt, not a fact you
+    already knew — its `url` is that excerpt's source. When full_text=True,
+    the `text` field is itself returned as "Source: <url>\n\n<passage>", so
+    the url travels with the passage as part of the same string, not as a
+    separate field you have to remember to check. When you use a passage's
+    content in your answer, carry that passage's "Source:" line forward as
+    the citation for the sentence it supports — an answer built from these
+    results without the matching url next to each claim is missing part of
+    the tool's output, not just missing a nice-to-have.
+
     ## Writing conventions
     The following conventions are used in the 4D language documentation:
     - the `{ }` characters (braces) indicate optional parameters. For example, `.delete({ option : Integer })` means that the *option* parameter may be omitted when calling the function.
@@ -184,7 +178,7 @@ def search(
         {
             "url": url,
             "similarity": 1 - distance,
-            **({"text": text} if full_text else {}),
+            **({"text": f"Source: {url}\n\n{text}"} if full_text else {}),
         }
         for url, text, lang, ver, distance in filtered
     ]
